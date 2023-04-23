@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+
+import argparse
+import getpass
+import json
+import logging
+import os
+from pathlib import Path
+import subprocess
+
+import pexpect
+
+
+pass_root = Path(
+    os.environ["PASSWORD_STORE_DIR"]
+    or (Path.home() / ".password-store")
+)
+
+
+def list_pass_names() -> list[str]:
+    return [
+        str(subpath.relative_to(pass_root)).removesuffix(".gpg")
+        for subpath in pass_root.rglob("*.gpg")
+    ]
+
+
+def all_parents(path: Path):
+    assert not path.is_absolute()
+    while path != Path("."):
+        yield path
+        path = path.parent
+
+
+def pass_export(name: str) -> str:
+    return subprocess.check_output(
+        ["pass", "show", name],
+        encoding="utf8",
+    )
+
+
+def mkdir_p(proc, path: Path, existing: set[str]) -> None:
+    for el in reversed(list(all_parents(path))):
+        el = str(el)
+        if el in existing:
+            continue
+
+        proc.expect("> $")
+
+        logging.debug(f"sending: mkdir {el}")
+        proc.sendline(f"mkdir {el}")
+
+        proc.expect(["Successfully added group", "already exists"])
+        existing.add(el)
+
+
+def main():
+    logging.basicConfig(level=logging.DEBUG)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file")
+    args = parser.parse_args()
+
+    pass_names = list_pass_names()
+
+    new_env = {**os.environ, "LANG": "C", "TERM": "dumb"}
+    proc = pexpect.spawn(
+        "keepassxc-cli", ["open", args.file],
+        env=new_env, timeout=10,
+    )
+
+    proc.expect("Enter password to unlock")
+    proc.sendline(getpass.getpass("DB password: "))
+
+    existing = set()
+    for pass_name in pass_names:
+        logging.info("handling %r", pass_name)
+
+        mkdir_p(proc, Path(pass_name).parent, existing)
+
+        proc.expect("> $")
+
+        # TODO: try to parse username on second line?
+        password, _, notes = pass_export(pass_name).strip().partition("\n")
+        # TODO (when keepassxc-cli permits it): real newlines in notes
+        notes = notes.replace("\n", " NEWLINE ")
+
+        # TODO: support overwriting existing entries instead of crashing
+        logging.debug(f"sending: add -p {pass_name}")
+        if notes:
+            proc.sendline(f"add -p {pass_name} --notes {json.dumps(notes, ensure_ascii=False)}")
+        else:
+            proc.sendline(f"add -p {pass_name}")
+            del notes
+
+        proc.expect("Enter password for new entry:")
+        logging.debug("sending password")
+        proc.sendline(password)
+        del password
+
+
+if __name__ == "__main__":
+    main()
