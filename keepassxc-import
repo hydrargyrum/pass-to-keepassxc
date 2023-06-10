@@ -82,7 +82,7 @@ def main():
         # TODO: try to parse username on second line?
         password, _, notes = pass_export(pass_name).strip().partition("\n")
         # TODO (when keepassxc-cli permits it): real newlines in notes
-        notes = notes.replace("\n", " NEWLINE ")
+        notes = notes.replace("\n", "\\n")
 
         # TODO: support overwriting existing entries instead of crashing
         logging.debug(f"sending: add -p {pass_name}")
