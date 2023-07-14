@@ -70,6 +70,7 @@ def main():
 
     pass_names = list_pass_names()
 
+    # LANG=C: we scrape english interface of keepassxc-cli
     new_env = {**os.environ, "LANG": "C", "TERM": "dumb"}
     proc = pexpect.spawn(
         "keepassxc-cli", ["open", args.file],
@@ -89,12 +90,12 @@ def main():
 
         # TODO: try to parse username on second line?
         password, _, notes = pass_export(pass_name).strip().partition("\n")
-        # TODO (when keepassxc-cli permits it): real newlines in notes
         notes = notes.replace("\n", "\\n")
 
         # TODO: support overwriting existing entries instead of crashing
         logging.debug(f"sending: add -p {pass_name}")
         if notes:
+            # use json.dumps to quote and escape the string for us (no lists or dicts)
             proc.sendline(f"add -p {pass_name} --notes {json.dumps(notes, ensure_ascii=False)}")
         else:
             proc.sendline(f"add -p {pass_name}")
