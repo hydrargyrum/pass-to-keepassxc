@@ -20,7 +20,7 @@ pass_root = Path(
 def list_pass_names() -> list[str]:
     return [
         str(subpath.relative_to(pass_root)).removesuffix(".gpg")
-        for subpath in pass_root.rglob("*.gpg")
+        for subpath in sorted(pass_root.rglob("*.gpg"))
     ]
 
 
