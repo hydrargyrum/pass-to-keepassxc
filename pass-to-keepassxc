@@ -56,8 +56,16 @@ def mkdir_p(proc, path: Path, existing: set[str]) -> None:
 def main():
     logging.basicConfig(level=logging.DEBUG)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("file")
+    parser = argparse.ArgumentParser(
+        description="Import 'pass' entries into FILE.kdbx (KeePassXC format)."
+        + " Set $PASSWORD_STORE_DIR to change pass database path "
+        + "(see pass(1))",
+    )
+    parser.add_argument(
+        "file", metavar="FILE.kdbx",
+        help="KeepassXC database into which passwords will be imported.",
+        + " The file must already exist."
+    )
     args = parser.parse_args()
 
     pass_names = list_pass_names()
