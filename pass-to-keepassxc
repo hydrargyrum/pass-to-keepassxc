@@ -63,7 +63,7 @@ def main():
     )
     parser.add_argument(
         "file", metavar="FILE.kdbx",
-        help="KeepassXC database into which passwords will be imported.",
+        help="KeepassXC database into which passwords will be imported."
         + " The file must already exist."
     )
     args = parser.parse_args()
